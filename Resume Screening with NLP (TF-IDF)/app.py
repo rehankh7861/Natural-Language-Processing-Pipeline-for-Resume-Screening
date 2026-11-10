@@ -2,12 +2,16 @@ import streamlit as st
 import pickle
 import PyPDF2
 import re
+import os
 from sklearn.metrics.pairwise import cosine_similarity
 
 st.set_page_config(page_title="AI Resume Screening", page_icon="📄", layout="centered")
 
 st.title("📄 AI Resume Screening System")
 st.write("Target Job Role select karein aur candidate resume evaluate karein.")
+
+# Script ki actual directory ka exact path
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Dataset roles ke specific requirements
 JOB_PROFILES = {
@@ -40,10 +44,11 @@ def clean_text(text):
     text = re.sub(r'\s+', ' ', text)
     return text.lower().strip()
 
-# 2. Load TF-IDF Vectorizer
+# 2. Load TF-IDF Vectorizer (Absolute Path se load karega)
 @st.cache_resource
 def load_vectorizer():
-    with open("tfidf_vectorizer.pkl", "rb") as f:
+    vec_path = os.path.join(BASE_DIR, "tfidf_vectorizer.pkl")
+    with open(vec_path, "rb") as f:
         vectorizer = pickle.load(f)
     return vectorizer
 
@@ -81,18 +86,15 @@ if st.button("Evaluate Match Score", type="primary"):
     if not resume_text.strip():
         st.warning("Pehle candidate ka resume paste karein ya PDF upload karein!")
     else:
-        # Dono ko ALAG ALAG vector banayein (Concanetate nahi karna)
         job_clean = clean_text(target_job_req)
         resume_clean = clean_text(resume_text)
         
         job_vec = vectorizer.transform([job_clean])
         resume_vec = vectorizer.transform([resume_clean])
         
-        # Calculate actual mathematical cosine match
         sim_score = cosine_similarity(job_vec, resume_vec)[0][0]
-        match_percentage = min(100, int(round(sim_score * 180)))  # Scaled to 0-100%
+        match_percentage = min(100, int(round(sim_score * 180)))
         
-        # Map to 0-4 Scale dynamically
         if match_percentage >= 75:
             score, verdict = 4, "Excellent Fit (Ideal Match)"
         elif match_percentage >= 55:
